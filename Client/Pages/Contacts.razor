@@ -1,0 +1,342 @@
+﻿@page "/contacts"
+@using Microsoft.AspNetCore.Components
+@using ChatApp.Client.ViewModels
+@using Models
+
+@inject NavigationManager navigationManager
+@inject IToastService toastService
+@inject IProfileViewModel _profileViewModel
+@inject IActivityViewModel _activityViewModel
+@inject ILocalStorageService _localStorageService
+@inject IUserSearchViewModel _userSearchViewModel
+@inject IContactViewModel _contactViewModel
+@inject HttpClient httpClient
+
+<h4>Chat Contacts</h4>
+
+
+<div class="d-flex flex-row mt-4">
+    <div class="mr-2 mt-3 pb-0">
+        <h6>Search to add friends to your contact list </h6><input value="@SearchText" @oninput="Search" Placeholder="Enter the email address to search" class="border-light border-bottom" style="width:400px; height:40px; border-radius:5px" />
+
+    </div>
+</div>
+
+@if (userfiltersearch.Any())
+{
+    _profilesLoaded = true;
+
+    <div class="d-flex flex-row mt-4">
+        <div class="mr-2 mt-3 pb-0">
+            <h6>Users found: @userfiltersearch.Count()</h6>
+
+        </div>
+    </div>
+
+    <MudList Clickable="false">
+
+        @foreach (var userfound in userfiltersearch)
+        {
+            <MudListItem Class="pa-0 px-2">
+                <div class="d-flex flex-row mt-n1 md-n1">
+                    <div class="mr-4">
+                        <MudBadge Class="my-2">
+                            @if (_profilesLoaded)
+                            {
+                                <MudAvatar Color="Color.Secondary" Style="height:50px; width:50px;">
+                                    @if (userfound.ProfilePicUrl is null)
+                                    {
+
+                                        @userfound.FirstName.ToUpper().FirstOrDefault()
+                                    }
+                                    else
+                                    {
+                                        <img src="@userfound.ProfilePicUrl" style="border-radius: 360px; width:50px; height: 50px;" alt="Alternate Text" />
+
+                                    }
+
+
+                                </MudAvatar>
+                            }
+                            else
+                            {
+                                <MudAvatar Color="Color.Dark" Style="height:50px; width:50px;">
+                                    @if (userfound.ProfilePicUrl is null)
+                                    {
+
+                                        @userfound.FirstName.ToUpper().FirstOrDefault()
+                                    }
+                                    else
+                                    {
+                                        <img src="@userfound.ProfilePicUrl" style="border-radius: 360px; width:50px; height: 50px;" alt="Alternate Text" />
+
+                                    }
+                                </MudAvatar>
+                            }
+
+                        </MudBadge>
+                    </div>
+                    <div class="row col-12">
+                        <MudText Typo="Typo.caption">@userfound.FirstName @userfound.LastName</MudText>
+                        <div class="row col-12">
+                            <MudText Typo="Typo.caption" Style="font-size:xx-small!important;"><b>About: @userfound.About</b></MudText>
+                            <div class="row col-12 mt-1">
+                                <MudButton Variant="Variant.Filled" Size="Size.Small" Color="Color.Primary" OnClick="()=>AddContact(userfound)">Add to my Contacts</MudButton>
+                            </div>
+
+                        </div>
+                    </div>
+
+
+                </div>
+            </MudListItem>
+        }
+    </MudList>
+}
+
+
+
+@if (myContacts.Any())
+{
+<hr />
+    <h6 class="mt-3">My Contacts</h6>
+    <MudList Clickable="true">
+
+        @foreach (var contact in myContacts)
+        {
+            <MudListItem Class="pa-0 px-2" OnClick="() => LoadChat(contact.UserId)">
+                <div class="d-flex flex-row mt-n1 md-n1">
+                    <div class="mr-4">
+                        <MudBadge Class="my-2">
+                            @if (_profilesLoaded)
+                            {
+                                <MudAvatar Color="Color.Secondary" Style="height:50px; width:50px;">
+                                    @foreach (var user in allUsers)
+                                    {
+                                        @if (user.UserId == contact.UserId && user.ProfilePicUrl is null)
+                                        {
+
+                                            @contact.FirstName.ToUpper().FirstOrDefault()
+                                        }
+                                        else if (user.UserId == contact.UserId && user.ProfilePicUrl != null)
+                                        {
+                                            <img src="@user.ProfilePicUrl" style="border-radius: 360px; width:50px; height: 50px;" alt="Alternate Text" />
+
+                                        }
+
+                                    }
+
+                                </MudAvatar>
+                            }
+                            else
+                            {
+                        <MudAvatar Color="Color.Dark" Style="height:50px; width:50px;">
+                            @foreach (var user in allUsers)
+                            {
+                                @if (user.UserId == contact.UserId && user.ProfilePicUrl is null)
+                                {
+
+                                    @contact.FirstName.ToUpper().FirstOrDefault()
+                                }
+                                else if (user.UserId == contact.UserId && user.ProfilePicUrl != null)
+                                {
+                                    <img src="@user.ProfilePicUrl" style="border-radius: 360px; width:50px; height: 50px;" alt="Alternate Text" />
+
+                                }
+
+                            }
+                        </MudAvatar>
+                            }
+
+                        </MudBadge>
+                    </div>
+                    <div>
+                        <MudText Typo="Typo.body2" Class="mt-3 mb-n2">
+                            @contact.FirstName @contact.LastName &nbsp;
+
+                            @foreach (var status in userstatuses)
+                            {
+                                @if (status.UserId == contact.UserId)
+                                {
+
+                                    @if (status.OnlineOfflineStatus == SD.LocalStorage_ChatStatusOnline || status.OnlineOfflineStatus == SD.LocalStorage_ChatStatusInChat)
+                                    {
+                                        <i class="far fa-comment-dots" style="color:limegreen"></i>
+                                    }
+                                    else
+                                    {
+                                        if (status.OnlineOfflineStatus == SD.LocalStorage_ChatStatusOffline)
+                                        {
+                                            <i class="far fa-comment-dots" style="color:red"></i>
+                                        }
+                                    }
+
+                                }
+                               
+                            }
+
+                        </MudText>
+                        @foreach (var user in allUsers)
+                        {
+                            if (user.UserId == contact.UserId)
+                            {
+                                <MudText Typo="Typo.caption" Style="font-size:xx-small!important;"><b>About: @user.About</b></MudText>
+                            }
+                        }
+
+                    </div>
+                </div>
+            </MudListItem>
+        }
+
+
+    </MudList>
+
+}
+else
+{
+    <div class="row col-12 my-4">
+        <h1 style="color: #6050dc">Please search for contacts to add to your contacts list.....</h1>
+
+    </div>
+
+}
+
+
+@code {
+
+    [CascadingParameter]
+
+    public Task<AuthenticationState> authenticationState { get; set; }
+
+    private bool _profilesLoaded { get; set; }
+    private string _searchContactsFor { get; set; }
+
+    private string currentLocalStorageStatus { get; set; }
+
+    //search contacts
+    public string SearchText { get; set; } = "";
+
+    public UserDTO ContactBelong { get; set; } = new UserDTO();
+
+    //online status from DB
+
+    private IEnumerable<UserActivityDTO> userstatuses { get; set; } = new List<UserActivityDTO>();
+    private IEnumerable<UserSearchDTO> allUsers { get; set; } = new List<UserSearchDTO>();
+    private IEnumerable<UserSearchDTO> userfiltersearch { get; set; } = new List<UserSearchDTO>();
+    private IEnumerable<UserContactsDTO> myContacts { get; set; } = new List<UserContactsDTO>();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        var authState = await authenticationState;
+        var user = authState.User;
+
+
+        if (user.Identity.IsAuthenticated)
+        {
+            try
+            {
+                ContactBelong = await httpClient.GetFromJsonAsync<UserDTO>("Profile/getprofile/" + user.Identity.Name);
+                _profilesLoaded = true;
+                allUsers = await _userSearchViewModel.GetAllUsersSearch();
+
+
+                //set user status from DB
+                userstatuses = await _activityViewModel.GetStatus();
+
+                //get mycontacts
+                myContacts = await _contactViewModel.GetContacts(user.Identity.Name);
+
+     
+            }
+            catch (System.Net.Http.HttpRequestException e)
+            {
+
+                if (e.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    await httpClient.GetAsync("User/logoutuser");
+                    navigationManager.NavigateTo("/", true);
+                }
+
+                toastService.ShowError("Oops something is wrong!" + e.ToString());
+            }
+
+        }
+        else
+        {
+            _profilesLoaded = false;
+            navigationManager.NavigateTo("/login");
+        }
+    }
+
+    private async Task AddContact(UserSearchDTO contacts)
+    {
+        UserContactsDTO contactsDTO = new UserContactsDTO();
+
+        contactsDTO.UserId = contacts.UserId;
+        contactsDTO.FirstName = contacts.FirstName;
+        contactsDTO.LastName = contacts.LastName;
+        contactsDTO.Email = contacts.Email;
+        contactsDTO.ContactBelongId = ContactBelong.UserId;
+
+        var result = await _contactViewModel.AddContact(contactsDTO);
+
+        if (result.Any())
+        {
+            toastService.ShowSuccess("New contact added!");
+        }
+        else
+        {
+            toastService.ShowError($"User {contacts.Email} is already in your contacts list!");
+        }
+
+
+        SearchText = "";
+        userfiltersearch = new List<UserSearchDTO>();
+
+        await OnInitializedAsync();
+
+    }
+
+    private void Search(ChangeEventArgs e)
+    {
+        SearchText = (string)e.Value;
+        userfiltersearch = allUsers.Where(a => a.Email.ToLower().Equals(SearchText.ToLower())).ToList();
+
+        if (userfiltersearch.Any())
+        {
+            _profilesLoaded = true;
+        }
+        else
+        {
+            _profilesLoaded = false;
+        }
+    }
+
+
+    private void NavigateToChat()
+    {
+        navigationManager.NavigateTo("/chat");
+
+    }
+
+    private void LoadChat(int userId)
+    {
+
+        if (userId != 0)
+        {
+            //_isInChat = true;
+            navigationManager.NavigateTo($"/chat/{userId}");
+        }
+        else
+        {
+            //_isInChat = false;
+            toastService.ShowError("Oops unable to load chat, please try again!");
+        }
+    }
+
+
+
+
+}

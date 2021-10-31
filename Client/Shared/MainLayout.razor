@@ -1,0 +1,92 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager navigationManager
+@inject HttpClient _httpClient
+@inject ILocalStorageService _localStorageService
+
+<BlazoredToasts Position="ToastPosition.BottomRight"
+                Timeout="10"
+                IconType="IconType.FontAwesome"
+                SuccessClass="success-toast-override"
+                SuccessIcon="fa fa-thumbs-up"
+                ErrorIcon="fa fa-bug" />
+
+
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="0">
+            <MudLink Href="/" Underline="Underline.None" Typo="Typo.h6"><span style="color:white">ChatApp<i class="fas fa-comment-dots pl-1 fa-2x"></i></span></MudLink>
+        <MudAppBarSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <div class="mr-3">
+                    <h6>Hello! @context.User.Identity.Name</h6>
+                </div>
+                <div class="mr-3">
+                    <MudButton @onclick="LogoutUser" Variant="Variant.Filled" Color="Color.Secondary"><i class="fas fa-sign-out-alt"></i>&nbsp;Logout</MudButton>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="mr-3">
+                    <MudButton @onclick="LoginUser" Variant="Variant.Filled" Color="Color.Primary"><i class="fas fa-sign-in-alt"></i>&nbsp;Login</MudButton>
+                </div>
+                <div class="mr-3">
+                    <MudButton @onclick="SignUp" Variant="Variant.Filled" Color="Color.Secondary"><i class="fas fa-user-plus"></i>&nbsp;SignUp</MudButton>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+        
+        @*<LoginDisplay />*@
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="1">
+        <NavMenu />
+    </MudDrawer>
+    <MudMainContent>
+        <MudToolBar DisableGutters="true">
+            <MudIconButton Icon="@Icons.Material.Outlined.Menu" Color="Color.Inherit" OnClick="@((e) => DrawerToggle())" Class="ml-3" />
+        </MudToolBar>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+
+@code {
+    bool _drawerOpen = false;
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private void LoginUser()
+    {
+        navigationManager.NavigateTo("/login", true);
+    }
+
+    private async Task LogoutUser()
+    {
+        await _localStorageService.RemoveItemAsync("ChatStatus");
+        await _httpClient.GetAsync("User/logoutuser");
+        navigationManager.NavigateTo("/", true);
+
+    }
+
+    private void SignUp()
+    {
+        navigationManager.NavigateTo("signup");
+    }
+
+    private void NavHome()
+    {
+
+        navigationManager.NavigateTo("/");
+
+    }
+
+}
+
+
+

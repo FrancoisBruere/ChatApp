@@ -1,0 +1,95 @@
+﻿@page "/signup"
+
+@using ChatApp.Client.ViewModels
+
+@inject ISignUpViewModel _signUpViewModel
+@inject NavigationManager navigationManager
+@inject IToastService toastService
+
+
+<h4>SignUp</h4>
+
+<EditForm Model="_signUpViewModel" OnValidSubmit="HandleSignUpUser">
+    
+        <DataAnnotationsValidator />
+        <div class="row col-lg-8 col-md-12  form-group">
+            <div class="card border col-lg-8 col-md-12 ">
+                <div class="py-2">
+                    <MudTextField @bind-Value="_signUpViewModel.FirstName" Variant="Variant.Outlined" placeholder="First Name" />
+                    <ValidationMessage For="(()=>_signUpViewModel.FirstName)" />
+                </div>
+                <div class="py-2">
+
+                    <MudTextField @bind-Value="_signUpViewModel.LastName" Variant="Variant.Outlined" placeholder="Last Name" />
+                    <ValidationMessage For="(()=>_signUpViewModel.LastName)" />
+                </div>
+                <div class="py-2">
+
+                    <MudTextField @bind-Value="_signUpViewModel.Email" Variant="Variant.Outlined" placeholder="Email" />
+                    <ValidationMessage For="(()=>_signUpViewModel.Email)" />
+                    <MudText Style="color:red">@Errors</MudText>
+
+                </div>
+                <div class="py-2">
+
+                    <MudTextField InputType="InputType.Password" @bind-Value="_signUpViewModel.Password" Variant="Variant.Outlined" placeholder="Passowrd" />
+                    <ValidationMessage For="(()=>_signUpViewModel.Password)" />
+                </div>
+                <div class="py-2">
+
+                    <MudTextField InputType="InputType.Password" @bind-Value="_signUpViewModel.ConfirmPassword" Variant="Variant.Outlined" placeholder="Confirm Password" />
+                    <ValidationMessage For="(()=>_signUpViewModel.ConfirmPassword)" />
+
+                </div>
+
+                <hr />
+                <div class="py-2">
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Sign Me Up</MudButton><span> </span>
+                    <br />
+                    <hr />
+                    <div class="py-2">
+                        <p><i class="fas fa-exclamation-circle"></i> If you have a social media account ie. Google, 
+                        Facebook or Twitter you can skip registation and login directly via social media.<a href="login">Login</a>
+                        </p>
+                    </div>
+ 
+                </div>
+            </div>
+        </div>
+
+</EditForm>
+
+
+
+
+@code {
+
+    private bool isProcessing { get; set; }
+    public string Errors { get; set; }
+
+    private async Task HandleSignUpUser()
+    {
+
+        var NewUser = await _signUpViewModel.SignUpUser();
+
+        isProcessing = true;
+
+        if (!NewUser.Contains("firstName") && isProcessing == true)
+        {
+
+            Errors = _signUpViewModel.Email;
+            toastService.ShowError($"User with email {_signUpViewModel.Email} already exist!");
+
+        }
+        else
+        {
+
+            toastService.ShowSuccess("SingUp successful, Welcome To ChatApp");
+            await Task.Delay(5000);
+            navigationManager.NavigateTo("/login",true);
+
+
+        }
+    }
+
+}

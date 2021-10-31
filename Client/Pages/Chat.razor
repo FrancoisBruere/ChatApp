@@ -1,0 +1,311 @@
+﻿@page "/chat"
+@page "/chat/{ToUserId}"
+
+@using ChatApp.Shared
+@using ChatApp.Client.ViewModels
+@using Models
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+
+@inject NavigationManager NavigationManager
+@inject HttpClient Http
+@inject IJSRuntime jsRuntime
+@inject HttpClient _httpClient
+@inject IProfileViewModel _profileViewModel
+@inject IChatHistoryViewModel _chatHistoryViewModel
+@inject IToastService toastService
+@inject ILocalStorageService _localStorageService
+
+
+
+
+<h4>Let's Chat</h4>
+@if (connectionStatus == "Connected")
+{
+    <p style="font-size:small">Network @connectionStatus:&nbsp;<i class="fas fa-network-wired" style="color:green;"></i></p>
+}
+else
+{
+    <p style="font-size:small">Network @connectionStatus:&nbsp;<i class="fas fa-network-wired" style="color:red;"></i></p>
+}
+
+
+<div style="border:0px;height:70vh;">
+    <div class="panel panel-primary" style="height: 100%;">
+        <div class="panel-heading top-bar">
+            <div class="col-md-8 col-xs-8">
+                <h3 class="row panel-title">
+                    @if (ToUser != null)
+                    {
+                        @if (ToUser.FirstName != null || ToUser.LastName != null)
+                        {
+
+                            <img src="@ToUser.ProfilePicUrl" style="border-radius: 360px; width:50px; height: 50px;" /><span>&nbsp;</span>
+                            <b class="mt-2">@ToUser.FirstName<span>&nbsp;</span>@ToUser.LastName</b>
+
+
+                        }
+                        else
+                        {
+                            <b>@ToUser.Email</b>
+                            <img src="@ToUser.ProfilePicUrl" style="border-radius: 360px; width:50px; height: 50px;" />
+                        }
+                    }
+                </h3>
+                <div class="row ml-5 mb-3">
+                    <MudText Typo="Typo.caption" Style="font-size:xx-small!important;"><b>About: @ToUser.About</b></MudText>
+                </div>
+            </div>
+        </div>
+        <div id="divMessageContainerBase" class="panel-body msg_container_base">
+            @if (chatHistories.Any())
+            {
+
+                @foreach (var histMessage in chatHistories)
+                {
+                    @if (histMessage.FromUserId == int.Parse(FromUserId))
+                    {
+                        <div class="row msg_container base_sent">
+                            <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 mt-0 mb-0 pb-0">
+                                <div class="box3 sb13">
+                                    <p>@histMessage.Message</p>
+                                    <div class="row col-lg-6 col-md-6 col-sm-6 col-xs-6 mt-0 mb-0 pb-0">
+                                        <MudText Typo="Typo.caption" Style="font-size:xx-small!important;"><b>Sent: @histMessage.CreatedDate</b></MudText>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row msg_container base_receive">
+                            <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 mt-0 mb-0 pb-0">
+                                <div class="box4 sb14">
+                                    <p>@histMessage.Message</p>
+                                    <div class="row col-lg-6 col-md-6 col-sm-6 col-xs-6 mt-0 mb-0 pb-0">
+                                        <MudText Typo="Typo.caption" Style="font-size:xx-small!important;"><b>Sent: @histMessage.CreatedDate</b></MudText>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            }
+
+
+            @if (Messages != null && Messages.Count() > 0)
+            {
+                @foreach (var message in Messages)
+                {
+                    @if (message.FromUserId == FromUserId)
+                    {
+                        <div class="row msg_container base_sent">
+                            <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 mt-0 mb-0 pb-0">
+                                <div class="box3 sb13">
+                                    <p>@message.MessageText</p>
+                                    <div class="row col-lg-6 col-md-6 col-sm-6 col-xs-6 mt-0 mb-0 pb-0">
+                                        <MudText Typo="Typo.caption" Style="font-size:xx-small!important;"><b>Sent: @message.CreatedDate</b></MudText>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row msg_container base_receive">
+                            <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 mt-0 mb-0 pb-0">
+                                <div class="box4 sb14">
+                                    <p>@message.MessageText</p>
+                                    <div class="row col-lg-6 col-md-6 col-sm-6 col-xs-6 mt-0 mb-0 pb-0">
+                                        <MudText Typo="Typo.caption" Style="font-size:xx-small!important;"><b>Sent: @message.CreatedDate</b></MudText>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            }
+
+
+        </div>
+
+        <div class="panel-footer pb-3">
+            <div class="input-group" id="myForm">
+                <input id="txtMessageInput" @bind="MessageText" type="text" class="form-control input-sm chat_input"
+                       placeholder="Write your message here...">
+                <MudButton OnClick="Send" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button">Send</MudButton>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@code {
+
+    [Parameter]
+    public string ToUserId { get; set; }
+
+    public UserDTO ToUser { get; set; } = new UserDTO();
+    public string FromUserId { get; set; }
+    public string MessageText { get; set; }
+    private IJSObjectReference _module;
+
+    private string ToConnectedHubClient { get; set; }
+
+    public List<Message> Messages { get; set; } = new List<Message>();
+
+
+    private IEnumerable<ChatHistoryDTO> chatHistories { get; set; } = new List<ChatHistoryDTO>();
+    // private string _conversationId { get; set; }
+
+
+    [CascadingParameter]
+    public Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    // hub
+
+    private HubConnection hubConnection;
+    public string SessionId { get; }
+
+
+    bool isConnected = false;
+
+
+    string connectionStatus = "Closed";
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        var claimsPrincipal = (await authenticationStateTask).User;
+
+        if (!claimsPrincipal.Identity.IsAuthenticated)
+            NavigationManager.NavigateTo("/");
+
+
+        FromUserId = (await _httpClient.GetFromJsonAsync<UserDTO>("User/getchattouser")).UserId.ToString();
+
+        if (Convert.ToInt32(ToUserId) > 0)
+            ToUser = await _httpClient.GetFromJsonAsync<UserDTO>("Profile/getprofileById/" + ToUserId);
+
+        var messageIdFrom = int.Parse(FromUserId);
+        var messageIdTo = int.Parse(ToUserId);
+
+        chatHistories = await _chatHistoryViewModel.GetChatHistory(messageIdFrom, messageIdTo);
+        //_conversationId = FromUserId + "," + ToUserId;
+
+        await HandleClientHub();
+
+
+    }
+
+    //private async Task SaveUserChatDetails(string ConnectionId)
+    //{
+    //    UserChatDetails userChatDetails = new UserChatDetails();
+    //    userChatDetails.ChatFromId = FromUserId;
+    //    userChatDetails.ChatToId = ToUserId;
+    //    userChatDetails.StartTime = DateTime.Now;
+    //    userChatDetails.ChatStatus = SD.LocalStorage_ChatStatusOnline;
+    //    userChatDetails.UserHubConnectId = ToConnectedHubClient;
+
+
+    //    await _localStorageService.SetItemAsync("UserActivity", userChatDetails);
+
+    //}
+
+    private async Task HandleClientHub()
+    {
+
+        // connect to enpoint created in startup.cs
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/ChatHub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+
+        //listen to messages - receive part
+
+        hubConnection.On<Message>("ReceiveMessage", (message) =>
+        {
+
+
+            if (message.FromUserId == FromUserId ||
+            (message.ToUserId == FromUserId && message.FromUserId == ToUserId))
+            {
+                Messages.Add(message); //add message to list of messages
+                StateHasChanged();
+            }
+
+        });
+
+
+
+        await hubConnection.StartAsync(); // start connection
+
+        ToConnectedHubClient = hubConnection.ConnectionId;
+
+        await _localStorageService.RemoveItemAsync("ChatStatus");
+
+        connectionStatus = "Connected";
+
+
+        hubConnection.Closed += async (s) =>
+        {
+
+            connectionStatus = "Disconnected";
+            await hubConnection.StartAsync();
+            connectionStatus = "Connected";
+
+        };
+
+    }
+
+
+    public async Task Send()
+    {
+        if (MessageText != null)
+        {
+            Message message = new Message();
+            message.ToUserId = ToUserId;
+            message.FromUserId = FromUserId;
+            message.MessageText = MessageText;
+            message.CreatedDate = DateTime.Now;
+
+            // write message to DB
+
+            var responce = await _httpClient.PostAsJsonAsync("ChatHistory/addChathistory", message);
+
+            if (responce.IsSuccessStatusCode)
+            {
+                //send to server hub
+
+                await hubConnection.SendAsync("SendMessages", message);  //"SendMessages" is the chatHud server method and server send to all clients
+            }
+            else
+            {
+                toastService.ShowError("Oops unable to send message. Please try again!");
+            }
+
+
+            MessageText = null;
+
+        }
+        else
+        {
+            toastService.ShowInfo("Please enter a message to send");
+
+        }
+
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        _module = await jsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/fixScroll.js");
+        await _module.InvokeVoidAsync("setScroll");
+    }
+
+}

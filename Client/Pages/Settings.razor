@@ -1,0 +1,62 @@
+﻿@page "/settings"
+
+
+@inject NavigationManager navigationManager
+@inject IToastService toastService
+@inject ILocalStorageService _localStorageService
+
+
+<h4>Settings</h4>
+
+<MudForm>
+    <div class="row col-md-8 col-sm-12 form-group">
+        <div class="card col-md-8 col-sm-12 form-group">
+            <div class="py-2">
+                <RadzenSwitch @bind-Checked="@chkNotifications" />
+                <div>
+                    <p>In-App Notifications</p>
+                </div>
+
+            </div>
+            <div class="py-2">
+                <RadzenSwitch @bind-Checked="@chkNotifications" />
+                <div>
+                    <p>Push Notifications</p>
+                </div>
+            </div>
+            <hr />
+            <div class="py-2">
+            <MudButton Color="Color.Primary" Variant="Variant.Filled">Save</MudButton>
+            </div>
+        </div>
+    </div>
+</MudForm>
+
+@code {
+
+    [CascadingParameter]
+
+    public Task<AuthenticationState> authenticationState { get; set; }
+
+    public bool chkNotifications { get; set; } = false;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        var authState = await authenticationState; //_authenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+
+        }
+        else
+        {
+            navigationManager.NavigateTo("/login");
+        }
+
+
+    }
+
+}

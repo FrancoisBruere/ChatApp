@@ -1,0 +1,117 @@
+﻿@page "/login"
+@using ChatApp.Client.ViewModels;
+
+@inject ILoginViewModel _loginViewModel
+@inject NavigationManager _navigationManager
+@inject IToastService toastService
+@inject IJSRuntime jsRuntime
+
+
+<h4>Login</h4>
+
+<MudForm>
+    <div class="row col-md-8 col-sm-12 form-group">
+        <div class="card border col-md-8 col-sm-12">
+            <div class="py-2">
+                <MudTextFieldString @bind-Text="_loginViewModel.Email" Placeholder="email address"></MudTextFieldString>
+            </div>
+
+            <div class="py-2">
+                <MudTextFieldString InputType="InputType.Password" @bind-Text="_loginViewModel.Password" Placeholder="password"></MudTextFieldString>
+            </div>
+
+            <hr />
+            <div class="py-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="LoginUser">Login</MudButton>
+            </div>
+            <hr />
+            <div class="py-2">
+                <span><b>Login using</b>&nbsp;<i class="fab fa-google"></i>&nbsp;<i class="fab fa-facebook"></i>&nbsp;<i class="fab fa-twitter"></i></span>
+            </div>
+            <div class="py-2">
+                <a class="btn btn-block btn-social btn-twitter" @onclick="TwitterSignIn">
+                    <span class="fa fa-twitter"></span><b> Sign in with Twitter</b>
+                </a>
+
+            </div>
+            <div class="py-2">
+                <a class="btn btn-block btn-social btn-google" style="background-color: #DB4437" @onclick="GoogleSignIn">
+                    <span class="fa fa-google"></span><b> Sign in with Google</b>
+                </a>
+
+            </div>
+            <div class="py-2">
+                <a class="btn btn-block btn-social btn-facebook" @onclick="FacebookSignIn">
+                    <span class="fa fa-facebook"></span><b> Sign in with Facebook</b>
+                </a>
+
+            </div>
+
+
+        </div>
+    </div>
+</MudForm>
+
+
+@code {
+
+    [CascadingParameter]
+
+    public Task<AuthenticationState> authenticationState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationState; //_authenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+    }
+
+    public async Task LoginUser()
+    {
+
+        if (_loginViewModel.Email == null || _loginViewModel.Password == null)
+        {
+            toastService.ShowError("Oops! Please enter email and password");
+        }
+        else
+        {
+
+            var responce = await _loginViewModel.LoginUser();
+
+            if (responce == "OK")
+            {
+                toastService.ShowSuccess("Welcome back to ChatApp");
+
+                _navigationManager.NavigateTo("/profile", true);
+
+            }
+
+            toastService.ShowError("Incorrect login details please try again");
+
+        }
+
+    }
+
+    private async Task TwitterSignIn()
+    {
+
+        _navigationManager.NavigateTo("/User/TwitterSignIn", true);
+    }
+
+
+    private void FacebookSignIn()
+    {
+
+        _navigationManager.NavigateTo("/User/FacebookSignIn", true);
+
+    }
+
+
+    private void GoogleSignIn()
+    {
+
+        _navigationManager.NavigateTo("/User/GoogleSignIn", true);
+
+    }
+
+}

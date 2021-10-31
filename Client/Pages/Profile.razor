@@ -1,0 +1,248 @@
+﻿@page "/profile"
+@using ChatApp.Client.ViewModels
+@using System.Security.Claims
+
+@inject IProfileViewModel _profileViewModel
+@inject NavigationManager navigationManager
+@inject IToastService toastService
+@inject IJSRuntime jsRuntime
+@inject HttpClient httpClient
+@inject ILocalStorageService _localStorageService
+
+
+<h4>ChatApp Profile</h4>
+
+@if (_profileViewModel != null)
+{
+
+
+<EditForm Model="_profileViewModel" OnValidSubmit="HandleUpdateProfile">
+    <DataAnnotationsValidator />
+    <div class="row col-md-12 col-sm-12 form-group">
+        <div style="">
+            <img class="mt-3 ml-2" src="@_profileViewModel.ProfilePicUrl" style="border-radius: 360px; border-style: inset; width:200px; height: 200px;" alt="Profile Image" />
+            <br />
+            <br />
+            <InputFile OnChange="@OnInputFileChanged"></InputFile>
+            <br />
+            <br />
+            @if (_profileViewModel.ProfilePicUrl is null)
+            {
+                <p><i class="far fa-file-image"></i> Max file size 512kb</p>
+            }
+
+        </div>
+        <div class="card border col-lg-8 col-md-12">
+
+            <div class="py-2">
+
+                <MudTextField @bind-Value="_profileViewModel.FirstName" Variant="Variant.Outlined" placeholder="First Name" />
+                <ValidationMessage For="(()=>_profileViewModel.FirstName)" />
+            </div>
+            <div class="py-2">
+
+                <MudTextField @bind-Value="_profileViewModel.LastName" Variant="Variant.Outlined" placeholder="Last Name" />
+                <ValidationMessage For="(()=>_profileViewModel.LastName)" />
+            </div>
+            <div class="py-2">
+
+                <MudTextField @bind-Value="_profileViewModel.Email" Variant="Variant.Outlined" placeholder="Email" />
+                <ValidationMessage For="(()=>_profileViewModel.Email)" />
+
+            </div>
+
+            <div class="py-2">
+                <div class="form-group">
+
+                    <textarea @bind="_profileViewModel.About" class="form-control" rows="3" placeholder="About you"></textarea>
+                </div>
+            </div>
+            <hr />
+            <div class="py-2">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Update Profile</MudButton><span> </span>
+              
+                <MudButton @onclick="()=>HandleDelete(_profileViewModel.UserId)" Variant="Variant.Filled" Color="Color.Error">Delete Profile</MudButton><span> </span>
+            
+            </div>
+        </div>
+
+    </div>
+    
+</EditForm>
+
+}
+else
+{
+    <div style="position:fixed;top:50%;left:50%;margin-top:-50px; margin-left:-100px">
+        <img src="/images/ajax-loader.gif" alt="loading" />
+
+    </div>
+}
+
+<DeleteConfirmation isParentProcessing="isProcessing" ConfirmationChanged="ConfirmDelete_Click"></DeleteConfirmation>
+
+
+@code{
+
+
+    [CascadingParameter]
+
+    public Task<AuthenticationState> authenticationState { get; set; }
+    private int? DeleteUserId { get; set; } = null;
+    private bool isProcessing { get; set; } = false;
+    private int _initializedCount { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+
+        var authState = await authenticationState; //_authenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+
+        if (user.Identity.IsAuthenticated)
+        {
+
+            var claim = user.Claims.Where(c => c.Type == ClaimTypes.Name).Select(c => c.Value).FirstOrDefault();
+
+            _profileViewModel.Email = claim;
+
+            try
+            {
+                await _profileViewModel.GetProfile();
+
+  
+            }
+            catch (System.Net.Http.HttpRequestException e) // remember on other pages
+            {
+
+                if (e.StatusCode ==System.Net.HttpStatusCode.Unauthorized)
+                {
+                    await httpClient.GetAsync("User/logoutuser");
+                    navigationManager.NavigateTo("/", true);
+                }
+
+
+
+                toastService.ShowError("Oops something is wrong!" + e.ToString());
+            }
+
+        }
+        else
+        {
+
+            navigationManager.NavigateTo("/login");
+
+        }
+
+
+    }
+
+    public async Task ConfirmDelete_Click(bool isConfirmed)
+    {
+        isProcessing = true;
+
+        if (isConfirmed && DeleteUserId != null)
+        {
+            var response = await httpClient.DeleteAsync("Profile/delete/" + DeleteUserId);
+
+            if (response.IsSuccessStatusCode)
+            {
+                toastService.ShowSuccess("Profile deleted successfully");
+                isProcessing = false;
+                await jsRuntime.InvokeVoidAsync("HideDeleteConfirmationModel");
+                await httpClient.GetAsync("User/logoutuser");
+                navigationManager.NavigateTo("sorry", true);
+            }
+
+            toastService.ShowError("Oops! Please try again!");
+
+        }
+        await jsRuntime.InvokeVoidAsync("HideDeleteConfirmationModel");
+        isProcessing = false;
+
+
+    }
+
+
+    private async Task HandleDelete(int userId)
+    {
+
+        DeleteUserId = userId;
+
+        await jsRuntime.InvokeVoidAsync("ShowDeleteConfirmationModel");
+
+    }
+
+
+    public async Task DownloadServerFile()
+    {
+        // get base 64 sting from web api
+        var httpResponceMessage = await httpClient.GetAsync("Profile/DownloadServerFile");
+        var base64String = httpResponceMessage.Content.ReadAsStringAsync().Result;
+
+        // call javascript func to download
+
+        await jsRuntime.InvokeVoidAsync("downloadFile", "text/plain", base64String, "TestingFile.txt");
+
+    }
+
+
+
+    public async Task HandleUpdateProfile()
+    {
+
+        await _profileViewModel.UpdateProfile();
+
+        toastService.ShowSuccess("Profile updated successfully!");
+
+    }
+
+    private async Task DownloadProfilePic()
+    {
+
+        // to get base64 string 3rd param below split using string[]
+        string[] base64String = _profileViewModel.ProfilePicUrl.Split(",");
+
+
+        //call js method pass params
+        await jsRuntime.InvokeVoidAsync("downloadFile", "image/png", base64String[1], "profilePicture");
+
+    }
+
+
+    public async Task OnInputFileChanged(InputFileChangeEventArgs inputFileChangeEventArgs)
+    {
+
+        // get file
+
+        var file = inputFileChangeEventArgs.File;
+
+        // read in byte array
+
+        var buffer = new byte[file.Size];
+
+        if (file.Size > 512000)
+        {
+            toastService.ShowInfo("File size must be less that 512kb");
+        }
+        else
+        {
+            await file.OpenReadStream().ReadAsync(buffer); // change file size here
+
+            // conver byte array to base 64 to store string in database
+
+            _profileViewModel.ProfilePicUrl = $"data:image/png;base64,{Convert.ToBase64String(buffer)}"; // format png
+
+            await _profileViewModel.UpdateProfile();
+
+            toastService.ShowSuccess("Profile picture uploaded successfully");
+        }
+
+
+    }
+
+
+
+
+}
