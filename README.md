@@ -1,4 +1,4 @@
-# ChatApp
+# ChatApp - Blazor
 Chat Application - SignalR - WAMS - API - Authentication
 
 Register Local or using social Media accounts- Authentication
