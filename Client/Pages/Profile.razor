@@ -20,7 +20,15 @@
     <DataAnnotationsValidator />
     <div class="row col-md-12 col-sm-12 form-group">
         <div style="">
-            <img class="mt-3 ml-2" src="@_profileViewModel.ProfilePicUrl" style="border-radius: 360px; border-style: inset; width:200px; height: 200px;" alt="Profile Image" />
+            @if (_profileViewModel.ProfilePicUrl is null)
+            {
+                <img class="mt-3 ml-2" src="/images/NoProfile.png" style="border-radius: 360px; border-style: inset; width:200px; height: 200px;" alt="No Profile Image" />
+            }
+            else
+            {
+                <img class="mt-3 ml-2" src="@_profileViewModel.ProfilePicUrl" style="border-radius: 360px; border-style: inset; width:200px; height: 200px;" alt="Profile Image" />
+
+            }
             <br />
             <br />
             <InputFile OnChange="@OnInputFileChanged"></InputFile>

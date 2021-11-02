@@ -22,7 +22,8 @@
 
             <hr />
             <div class="py-2">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="LoginUser">Login</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="LoginUser">Login</MudButton>&nbsp;
+                <b><a href="signup"><i class="fas fa-user-plus"></i>&nbsp;SignUp</a></b>
             </div>
             <hr />
             <div class="py-2">
@@ -63,6 +64,11 @@
     {
         var authState = await authenticationState; //_authenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            _navigationManager.NavigateTo("/profile", true); // Added for remembe me
+        }
 
     }
 

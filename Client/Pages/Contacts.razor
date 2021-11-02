@@ -98,7 +98,7 @@
 
 @if (myContacts.Any())
 {
-<hr />
+    <hr />
     <h6 class="mt-3">My Contacts</h6>
     <MudList Clickable="true">
 
@@ -130,22 +130,22 @@
                             }
                             else
                             {
-                        <MudAvatar Color="Color.Dark" Style="height:50px; width:50px;">
-                            @foreach (var user in allUsers)
-                            {
-                                @if (user.UserId == contact.UserId && user.ProfilePicUrl is null)
-                                {
+                                <MudAvatar Color="Color.Dark" Style="height:50px; width:50px;">
+                                    @foreach (var user in allUsers)
+                                    {
+                                        @if (user.UserId == contact.UserId && user.ProfilePicUrl is null)
+                                        {
 
-                                    @contact.FirstName.ToUpper().FirstOrDefault()
-                                }
-                                else if (user.UserId == contact.UserId && user.ProfilePicUrl != null)
-                                {
-                                    <img src="@user.ProfilePicUrl" style="border-radius: 360px; width:50px; height: 50px;" alt="Alternate Text" />
+                                            @contact.FirstName.ToUpper().FirstOrDefault()
+                                        }
+                                        else if (user.UserId == contact.UserId && user.ProfilePicUrl != null)
+                                        {
+                                            <img src="@user.ProfilePicUrl" style="border-radius: 360px; width:50px; height: 50px;" alt="Alternate Text" />
 
-                                }
+                                        }
 
-                            }
-                        </MudAvatar>
+                                    }
+                                </MudAvatar>
                             }
 
                         </MudBadge>
@@ -172,7 +172,7 @@
                                     }
 
                                 }
-                               
+
                             }
 
                         </MudText>
@@ -193,14 +193,19 @@
     </MudList>
 
 }
-else
+else if (!myContacts.Any())
 {
     <div class="row col-12 my-4">
         <h1 style="color: #6050dc">Please search for contacts to add to your contacts list.....</h1>
 
     </div>
 
+    <div style="position:fixed;top:50%;left:50%;margin-top:-50px; margin-left:-100px">
+        <img src="/images/ajax-loader.gif" alt="loading" />
+
+    </div>
 }
+
 
 
 @code {
@@ -248,7 +253,7 @@ else
                 //get mycontacts
                 myContacts = await _contactViewModel.GetContacts(user.Identity.Name);
 
-     
+
             }
             catch (System.Net.Http.HttpRequestException e)
             {
