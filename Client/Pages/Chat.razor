@@ -13,6 +13,7 @@
 @inject HttpClient _httpClient
 @inject IProfileViewModel _profileViewModel
 @inject IChatHistoryViewModel _chatHistoryViewModel
+@inject IContactViewModel _contactViewModel
 @inject IToastService toastService
 @inject ILocalStorageService _localStorageService
 
@@ -187,10 +188,11 @@ else
             NavigationManager.NavigateTo("/");
 
 
-        FromUserId = (await _httpClient.GetFromJsonAsync<UserDTO>("User/getchattouser")).UserId.ToString();
+        FromUserId = await _localStorageService.GetItemAsStringAsync("User"); //(await _httpClient.GetFromJsonAsync<UserDTO>("User/getchattouser")).UserId.ToString();
 
         if (Convert.ToInt32(ToUserId) > 0)
-            ToUser = await _httpClient.GetFromJsonAsync<UserDTO>("Profile/getprofileById/" + ToUserId);
+            ToUser = await _profileViewModel.ChatUser(int.Parse(ToUserId));
+                //await _httpClient.GetFromJsonAsync<UserDTO>("Profile/getprofileById/" + ToUserId);
 
         var messageIdFrom = int.Parse(FromUserId);
         var messageIdTo = int.Parse(ToUserId);
@@ -277,9 +279,10 @@ else
 
             // write message to DB
 
-            var responce = await _httpClient.PostAsJsonAsync("ChatHistory/addChathistory", message);
+            var response = await _chatHistoryViewModel.PostMessage(message);
+                // await _httpClient.PostAsJsonAsync("ChatHistory/addChathistory", message);
 
-            if (responce.IsSuccessStatusCode)
+            if (response == true)
             {
                 //send to server hub
 

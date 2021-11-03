@@ -1,7 +1,9 @@
-﻿@inherits LayoutComponentBase
+﻿@using ChatApp.Client.ViewModels
+@inherits LayoutComponentBase
 @inject NavigationManager navigationManager
 @inject HttpClient _httpClient
 @inject ILocalStorageService _localStorageService
+@inject IActivityViewModel _activityViewModel
 
 <BlazoredToasts Position="ToastPosition.BottomRight"
                 Timeout="10"
@@ -55,7 +57,11 @@
 
 
 @code {
+
     bool _drawerOpen = false;
+
+
+
     void DrawerToggle()
     {
         _drawerOpen = !_drawerOpen;
@@ -68,8 +74,16 @@
 
     private async Task LogoutUser()
     {
-        await _localStorageService.RemoveItemAsync("ChatStatus");
+
+        var userId = await _localStorageService.GetItemAsStringAsync("User");
+
+        await _activityViewModel.UpdateUserActivity(userId);
+        
+        await _localStorageService.RemoveItemAsync("JWT_Token");
+        await _localStorageService.RemoveItemAsync("User");
         await _httpClient.GetAsync("User/logoutuser");
+
+
         navigationManager.NavigateTo("/", true);
 
     }
@@ -79,12 +93,6 @@
         navigationManager.NavigateTo("signup");
     }
 
-    private void NavHome()
-    {
-
-        navigationManager.NavigateTo("/");
-
-    }
 
 }
 

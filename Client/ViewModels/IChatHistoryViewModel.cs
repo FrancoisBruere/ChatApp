@@ -1,4 +1,5 @@
-﻿using Models;
+﻿using ChatApp.Shared;
+using Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,5 +11,7 @@ namespace ChatApp.Client.ViewModels
     {
 
         public Task<IEnumerable<ChatHistoryDTO>> GetChatHistory(int fromId, int toId);
+
+        public Task<bool> PostMessage(Message message);
     }
 }

@@ -23,8 +23,8 @@ namespace ChatApp.Client.ViewModels
      
         public Task<System.Net.HttpStatusCode> GetProfile();
 
-        //public Task<string> DeleteProfile();
+        public Task<UserDTO> ChatUser(int userId);
 
-
+        public Task<bool> DeleteProfile(int userId);
     }
 }

@@ -1,4 +1,5 @@
-﻿using DataAccess;
+﻿using ChatApp.Shared;
+using DataAccess;
 using Models;
 using System;
 using System.Collections.Generic;
@@ -38,6 +39,26 @@ namespace ChatApp.Client.ViewModels
             return httpResponse.StatusCode.ToString();
 
         }
+
+
+        // JWT To call for razor component -  login
+
+        public async Task<AuthenticationResponse> AuthenticateJWT()
+        {
+            // create Auth Request
+            AuthenticationRequest authenticationRequest = new AuthenticationRequest();
+            authenticationRequest.Email = this.Email;
+            authenticationRequest.Password = this.Password;
+
+            // Authenticate the req
+            var httpMessageResponse = await _httpClient.PostAsJsonAsync<AuthenticationRequest>($"User/authenticatejwt", authenticationRequest);
+
+            //send token to client to store
+            return await httpMessageResponse.Content.ReadFromJsonAsync<AuthenticationResponse>();
+
+
+        }
+
 
 
         public static implicit operator LoginViewModel(UserDTO user)

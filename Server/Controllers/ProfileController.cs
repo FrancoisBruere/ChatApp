@@ -40,12 +40,12 @@ namespace ChatApp.Server.Controllers
 
         [HttpGet("getprofileById/{userId}")]
 
-        public async Task<IActionResult> GetUserProfile(int userId)
+        public async Task<UserDTO> GetUserProfileId(int userId)
         {
             if (userId != 0)
             {
                 var user = await _chatUserRepository.GetUserProfile(userId);
-                return Ok(user);
+                return user;
             }
 
             throw new NullReferenceException();

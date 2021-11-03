@@ -63,14 +63,26 @@ namespace ChatApp.Client.ViewModels
                 }
 
                 return System.Net.HttpStatusCode.Unauthorized;  //Remember on other pages
-
-                
-         
-            
-            
         }
 
-      
+        public async Task<UserDTO> ChatUser(int userId)
+        {
+            UserDTO chatUser = await _httpClient.GetFromJsonAsync<UserDTO>("Profile/getprofileById/" + userId);
+            if (chatUser != null)
+            {
+                return chatUser;
+            }
+
+            return null; 
+        }
+
+        public async Task<bool> DeleteProfile(int userId)
+        {
+            var response = await _httpClient.DeleteAsync("Profile/delete/" + userId);
+
+            return response.IsSuccessStatusCode;
+        }
+
 
         private void LoadCurrentObject(ProfileViewModel profileViewModel)
         {
@@ -83,8 +95,7 @@ namespace ChatApp.Client.ViewModels
 
         }
 
-
-
+      
 
         public static implicit operator ProfileViewModel(UserDTO user)
         {

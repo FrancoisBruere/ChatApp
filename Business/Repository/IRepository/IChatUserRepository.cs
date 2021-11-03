@@ -21,10 +21,10 @@ namespace Business.Repository.IRepository
         public Task<Message> AddChatHistory(Message historyDTO);
         public Task<UserContactsDTO> AddContact(UserContactsDTO contacts);
         public Task<IEnumerable<UserContactsDTO>> GetContacts(string email);
+        
+        public Task<bool> AddUserActivity(UserActivityDTO userActivity);
 
-        public Task AddUserActivity(int userId);
-
-        public Task UpateUserActivity(int userId);
+        public Task UpateUserActivity(UserActivityDTO updateUserActivity);
 
         public Task<IEnumerable<UserActivityDTO>> GetUserStatus();
 

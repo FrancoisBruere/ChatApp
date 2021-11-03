@@ -7,13 +7,17 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.Twitter;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using Models;
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Linq;
 using System.Security.Claims;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace ChatApp.Server.Controllers
@@ -26,13 +30,16 @@ namespace ChatApp.Server.Controllers
        
         private readonly IChatUserRepository _chatUserRepository;
         private readonly ILogger<UserController> _logger;
+        private readonly ApplicationDbContext _db;
+        private readonly IConfiguration _configuration;
 
-        public UserController(IChatUserRepository chatUserRepository, ILogger<UserController> logger)
+        public UserController(IChatUserRepository chatUserRepository, ILogger<UserController> logger, IConfiguration configuration, ApplicationDbContext db)
         {
             
             _chatUserRepository = chatUserRepository;
             _logger = logger;
-            
+            _configuration = configuration;
+            _db = db;
         }
 
         [HttpPost("signup")]
@@ -51,78 +58,79 @@ namespace ChatApp.Server.Controllers
         }
 
 
+        #region - OldHttpCookie Login/GetcurrentUser
+        //[HttpPost("loginuser")]
+        //public async Task<ActionResult<UserDTO>>LoginUser(UserDTO userDTO)
+        //{
+        //    userDTO.Password = Utility.Encrypt(userDTO.Password);
+        //    UserDTO loggedInUser = await _chatUserRepository.GetUserForLogin(userDTO.Email, userDTO.Password);
 
-        [HttpPost("loginuser")]
-        public async Task<ActionResult<UserDTO>>LoginUser(UserDTO userDTO)
-        {
-            userDTO.Password = Utility.Encrypt(userDTO.Password);
-            UserDTO loggedInUser = await _chatUserRepository.GetUserForLogin(userDTO.Email, userDTO.Password);
-
-            if (loggedInUser != null)
-            {
-                // create a claim
-                var claim = new Claim(ClaimTypes.Email, loggedInUser.Email);
-                // claim id used for signalR
-                var claimNameIdentifier = new Claim(ClaimTypes.NameIdentifier, loggedInUser.UserId.ToString());
-
-
-                // create claimsIdentity
-                var claimsIdentity = new ClaimsIdentity(new[] { claim, claimNameIdentifier }, "serverAuth");
-                // create claimsPrincipal
-                var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
+        //    if (loggedInUser != null)
+        //    {
+        //        // create a claim
+        //        var claim = new Claim(ClaimTypes.Email, loggedInUser.Email);
+        //        // claim id used for signalR
+        //        var claimNameIdentifier = new Claim(ClaimTypes.NameIdentifier, loggedInUser.UserId.ToString());
 
 
-                // sign user in
-                await HttpContext.SignInAsync(claimsPrincipal, GetAuthenticationProperties()); // pass auth propperties here
-                
-
-                
-            }
-            else
-            {
-                return NotFound(userDTO);
-            }
-
-            
-            return await Task.FromResult(loggedInUser);
-
-        }
-
-        [HttpGet("getcurrentuser")]
-        public async Task<ActionResult<UserDTO>> GetCurrentUser()
-        {
-            UserDTO currentUser = new UserDTO();
+        //        // create claimsIdentity
+        //        var claimsIdentity = new ClaimsIdentity(new[] { claim, claimNameIdentifier }, "serverAuth");
+        //        // create claimsPrincipal
+        //        var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
 
 
-            if (User.Identity.IsAuthenticated)
-            {
-                currentUser.Email = User.FindFirstValue(ClaimTypes.Email); //get state of user
-                currentUser = await _chatUserRepository.GetUserProfileByEmail(currentUser.Email); //XXXXXXXXXXXXXX
+        //        // sign user in
+        //        await HttpContext.SignInAsync(claimsPrincipal, GetAuthenticationProperties()); // pass auth propperties here
 
-                if (currentUser == null) // this is added for 3rd party login accounts
-                {
 
-                    currentUser = new UserDTO();
-                   
-                    //currentUser.UserId = _db.Users.Max(User => User.UserId) + 1;
-                    
-                    
-                    currentUser.Email = User.FindFirstValue(ClaimTypes.Email);
-                    currentUser.Password = Utility.Encrypt(currentUser.Email);
-                    currentUser.Source = User.Identity.AuthenticationType; //"ExternalAccount";
-                    
 
-                    await _chatUserRepository.SignUp(currentUser);
+        //    }
+        //    else
+        //    {
+        //        return NotFound(userDTO);
+        //    }
 
-                }
 
-                               
-                await _chatUserRepository.AddUserActivity(currentUser.UserId);
-            }
+        //    return await Task.FromResult(loggedInUser);
 
-            return await Task.FromResult(currentUser);
+        //}
 
-        }
+        //[HttpGet("getcurrentuser")]
+        //public async Task<ActionResult<UserDTO>> GetCurrentUser()
+        //{
+        //    UserDTO currentUser = new UserDTO();
+
+
+        //    if (User.Identity.IsAuthenticated)
+        //    {
+        //        currentUser.Email = User.FindFirstValue(ClaimTypes.Email); //get state of user
+        //        currentUser = await _chatUserRepository.GetUserProfileByEmail(currentUser.Email); //XXXXXXXXXXXXXX
+
+        //        if (currentUser == null) // this is added for 3rd party login accounts
+        //        {
+
+        //            currentUser = new UserDTO();
+
+        //            //currentUser.UserId = _db.Users.Max(User => User.UserId) + 1;
+
+
+        //            currentUser.Email = User.FindFirstValue(ClaimTypes.Email);
+        //            currentUser.Password = Utility.Encrypt(currentUser.Email);
+        //            currentUser.Source = User.Identity.AuthenticationType; //"ExternalAccount";
+
+
+        //            await _chatUserRepository.SignUp(currentUser);
+
+        //        }
+
+
+        //       // moved to JWT Auth below await _chatUserRepository.AddUserActivity(currentUser.UserId);
+        //    }
+
+        //    return await Task.FromResult(currentUser);
+
+        //}
+        #endregion
 
         [HttpGet("getchattouser")]
         public async Task<ActionResult<UserDTO>> GetChatToUser()
@@ -142,33 +150,14 @@ namespace ChatApp.Server.Controllers
         }
 
         [HttpGet("logoutuser")]
-        public async Task<ActionResult<string>> LogOutUser()
+        public async Task<string> LogOutUser()
         {
-            UserDTO currentUser = new UserDTO();
-
-
-            if (User.Identity.IsAuthenticated)
-            {
-                currentUser.Email = User.FindFirstValue(ClaimTypes.Email);
-                currentUser = await _chatUserRepository.GetUserProfileByEmail(currentUser.Email);
-
-                if (currentUser!=null)
-                {
-                    await _chatUserRepository.UpateUserActivity(currentUser.UserId);
-                }
-                
-                
-                
-            }
-
+           
             await HttpContext.SignOutAsync();
-            return "Success";
 
+            return "Success";
         }
 
-
-
-       
 
         [HttpGet("TwitterSignIn")]
 
@@ -199,8 +188,6 @@ namespace ChatApp.Server.Controllers
 
         }
 
-        
-
         // get authentication properties as per loginuser for social login accouts -  cookie settings "loginuser"
 
         public AuthenticationProperties GetAuthenticationProperties()
@@ -226,6 +213,100 @@ namespace ChatApp.Server.Controllers
             return Unauthorized();
 
 
+        }
+
+        //Migrating to JWT Authorization...
+        private string GenerateJwtToken(User user)
+        {
+            //getting the secret key
+            string secretKey = _configuration["JWTSettings:SecretKey"];
+            var key = Encoding.ASCII.GetBytes(secretKey);
+
+            //create claims
+            var claimEmail = new Claim(ClaimTypes.Email, user.Email);
+            var claimNameIdentifier = new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString());
+
+            //create claimsIdentity
+            var claimsIdentity = new ClaimsIdentity(new[] { claimEmail, claimNameIdentifier }, "serverAuth");
+
+            // generate token that is valid for 1 days
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = claimsIdentity,
+                Expires = DateTime.UtcNow.AddDays(1),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+            //creating a token handler
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+
+            //returning the token back
+            return tokenHandler.WriteToken(token);
+        }
+
+        [HttpPost("authenticatejwt")]
+        public async Task<ActionResult<AuthenticationResponse>> AuthenticateJWT(AuthenticationRequest authenticationRequest)
+        {
+            string token = string.Empty;
+
+            //checking if the user exists in the database
+            authenticationRequest.Password = Utility.Encrypt(authenticationRequest.Password);
+            User loggedInUser = await _db.Users
+                        .Where(u => u.Email == authenticationRequest.Email && u.Password == authenticationRequest.Password)
+                        .FirstOrDefaultAsync();
+
+            if (loggedInUser != null)
+            {
+                //generating the token
+                token = GenerateJwtToken(loggedInUser);
+
+            }
+            return await Task.FromResult(new AuthenticationResponse() { Token = token });
+        }
+
+
+        [HttpPost("getuserbyjwt")]
+        public async Task<ActionResult<User>> GetUserByJWT([FromBody] string jwtToken)
+        {
+            try
+            {
+                //getting the secret key
+                string secretKey = _configuration["JWTSettings:SecretKey"];
+                var key = Encoding.ASCII.GetBytes(secretKey);
+
+                //preparing the validation parameters
+                var tokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = false,
+                    ValidateAudience = false
+                };
+                var tokenHandler = new JwtSecurityTokenHandler();
+                SecurityToken securityToken;
+
+                //validating the token
+                var principle = tokenHandler.ValidateToken(jwtToken, tokenValidationParameters, out securityToken);
+                var jwtSecurityToken = (JwtSecurityToken)securityToken;
+
+                if (jwtSecurityToken != null && jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    //returning the user if found
+                    var userId = principle.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    
+                    var result = await _db.Users.Where(u => u.UserId == Convert.ToInt64(userId)).FirstOrDefaultAsync();
+                   
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                //logging the error and returning null
+                Console.WriteLine("Exception : " + ex.Message);
+                return null;
+            }
+            //returning null if token is not validated
+            return null;
         }
 
     }

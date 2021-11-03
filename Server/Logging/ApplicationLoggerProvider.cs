@@ -7,21 +7,21 @@ using System.Threading.Tasks;
 
 namespace ChatApp.Server.Logging
 {
-    public class ApplicationLoggerProvider// : ILoggerProvider
+    public class ApplicationLoggerProvider : ILoggerProvider
     {
-        //private readonly ApplicationDbContext _db;
-        //public ApplicationLoggerProvider(ApplicationDbContext db)
-        //{
-        //    _db = db;
-        //}
-        //public ILogger CreateLogger(string categoryName)
-        //{
-        //    return new DatabaseLogger(_db);
-        //}
+        private readonly ApplicationDbContext _db;
+        public ApplicationLoggerProvider(ApplicationDbContext db)
+        {
+            _db = db;
+        }
+        public ILogger CreateLogger(string categoryName)
+        {
+            return new DatabaseLogger(_db);
+        }
 
-        //public void Dispose()
-        //{
-            
-        //}
+        public void Dispose()
+        {
+
+        }
     }
 }

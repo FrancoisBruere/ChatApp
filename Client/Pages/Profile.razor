@@ -8,7 +8,7 @@
 @inject IJSRuntime jsRuntime
 @inject HttpClient httpClient
 @inject ILocalStorageService _localStorageService
-
+@inject IActivityViewModel _activityViewModel
 
 <h4>ChatApp Profile</h4>
 
@@ -119,7 +119,10 @@ else
             {
                 await _profileViewModel.GetProfile();
 
-  
+                await _localStorageService.SetItemAsStringAsync("User", _profileViewModel.UserId.ToString());
+
+              
+
             }
             catch (System.Net.Http.HttpRequestException e) // remember on other pages
             {
@@ -146,20 +149,25 @@ else
 
     }
 
+
     public async Task ConfirmDelete_Click(bool isConfirmed)
     {
         isProcessing = true;
 
         if (isConfirmed && DeleteUserId != null)
         {
-            var response = await httpClient.DeleteAsync("Profile/delete/" + DeleteUserId);
+            var response = await _profileViewModel.DeleteProfile(DeleteUserId.Value);
+            //await httpClient.DeleteAsync("Profile/delete/" + DeleteUserId);
 
-            if (response.IsSuccessStatusCode)
+            if (response == true)
             {
                 toastService.ShowSuccess("Profile deleted successfully");
                 isProcessing = false;
                 await jsRuntime.InvokeVoidAsync("HideDeleteConfirmationModel");
-                await httpClient.GetAsync("User/logoutuser");
+
+                await _localStorageService.RemoveItemAsync("JWT_Token");
+                await _localStorageService.RemoveItemAsync("User");
+
                 navigationManager.NavigateTo("sorry", true);
             }
 
@@ -250,7 +258,4 @@ else
 
     }
 
-
-
-
-}
+    }

@@ -1,4 +1,5 @@
-﻿using Models;
+﻿using Common;
+using Models;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -12,7 +13,8 @@ namespace ChatApp.Client.ViewModels
 {
     public class ActivityViewModel : IActivityViewModel
     {
-     
+
+      
         private HttpClient _httpClient;
 
         public ActivityViewModel()
@@ -26,13 +28,47 @@ namespace ChatApp.Client.ViewModels
             _httpClient = httpClient;
         }
 
+        public async Task<bool> AddUserActivity(int userId)
+        {
+            if (userId != 0)
+            {
+                UserActivityDTO activityDTO = new UserActivityDTO();
+                activityDTO.UserId = userId;
+                activityDTO.OnlineOfflineStatus = SD.LocalStorage_ChatStatusOnline;
+                activityDTO.LoginDate = DateTime.Now;
+                
+                var response = await _httpClient.PostAsJsonAsync("Activity/adduseractivity/",activityDTO);
+
+                return true;
+            }
+
+            return false; 
+            
+        }
+
+        public async Task<bool> UpdateUserActivity(string userId)
+        {
+            if (userId != null)
+            {
+                UserActivityDTO activityDTO = new UserActivityDTO();
+                activityDTO.UserId = int.Parse(userId);
+                activityDTO.OnlineOfflineStatus = SD.LocalStorage_ChatStatusOffline;
+                activityDTO.LogoutDate = DateTime.Now;
+
+                var response = await _httpClient.PutAsJsonAsync("Activity/updateuseractivity/", activityDTO);
+
+                return true;
+            }
+
+            return false;
+        }
 
         public async Task<IEnumerable<UserActivityDTO>> GetStatus()
         {
           
             try
             {
-                var response = await _httpClient.GetAsync("Activity/getuserstatuses");
+                var response = await _httpClient.GetAsync("Activity/getuserstatuses/");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -52,8 +88,6 @@ namespace ChatApp.Client.ViewModels
             }
         }
 
-
-
-
+       
     }
 }

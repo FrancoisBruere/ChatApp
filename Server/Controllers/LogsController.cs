@@ -14,7 +14,7 @@ namespace ChatApp.Server.Controllers
 
     [ApiController]
     [Route("[controller]")]
-    [Authorize]
+   // [Authorize]
     public class LogsController : Controller
     {
         private readonly ApplicationDbContext _db;

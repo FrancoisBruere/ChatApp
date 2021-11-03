@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Models;
 
 namespace ChatApp.Server.Controllers
 {
@@ -26,14 +27,29 @@ namespace ChatApp.Server.Controllers
         }
 
         [HttpGet("getuserstatuses")]
-
         public async Task<IActionResult> GetUserStatus()
         {
 
-                var userStatuses = await _chatUserRepository.GetUserStatus();
-                return Ok(userStatuses);
+            var userStatuses = await _chatUserRepository.GetUserStatus();
+            return Ok(userStatuses);
 
         }
 
+        [HttpPost("adduseractivity")]
+        public async Task<bool> AddUserActivity(UserActivityDTO userActivity)
+        {
+            await _chatUserRepository.AddUserActivity(userActivity);
+            return true;
+
+        }
+
+
+        [HttpPut("updateuseractivity")]
+        public async Task<bool> UpdateUserActivity(UserActivityDTO updateUserActivity)
+        {
+            await _chatUserRepository.UpateUserActivity(updateUserActivity);
+            return true;
+
+        }
     }
 }

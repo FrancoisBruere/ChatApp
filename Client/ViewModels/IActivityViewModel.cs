@@ -12,5 +12,8 @@ namespace ChatApp.Client.ViewModels
 
         public Task<IEnumerable<UserActivityDTO>> GetStatus();
 
+        public Task<bool> AddUserActivity(int userId);
+
+        public Task<bool> UpdateUserActivity(string userId);
     }
 }

@@ -18,5 +18,6 @@ namespace ChatApp.Client.ViewModels
         public Task<string> AddContact(UserContactsDTO contacts);
 
         public Task<IEnumerable<UserContactsDTO>> GetContacts(string email);
+        
     }
 }

@@ -1,10 +1,12 @@
 ﻿@page "/login"
 @using ChatApp.Client.ViewModels;
+@using ChatApp.Shared;
 
 @inject ILoginViewModel _loginViewModel
 @inject NavigationManager _navigationManager
 @inject IToastService toastService
 @inject IJSRuntime jsRuntime
+@inject ILocalStorageService _localStorageService
 
 
 <h4>Login</h4>
@@ -22,7 +24,7 @@
 
             <hr />
             <div class="py-2">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="LoginUser">Login</MudButton>&nbsp;
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="AuthenticateJWT">Login</MudButton>&nbsp;
                 <b><a href="signup"><i class="fas fa-user-plus"></i>&nbsp;SignUp</a></b>
             </div>
             <hr />
@@ -68,35 +70,41 @@
         if (user.Identity.IsAuthenticated)
         {
             _navigationManager.NavigateTo("/profile", true); // Added for remembe me
+
         }
+
 
     }
 
-    public async Task LoginUser()
-    {
+    //public async Task LoginUser() // standard login using cookie
+    //{
 
-        if (_loginViewModel.Email == null || _loginViewModel.Password == null)
-        {
-            toastService.ShowError("Oops! Please enter email and password");
-        }
-        else
-        {
+    //    if (_loginViewModel.Email == null || _loginViewModel.Password == null)
+    //    {
+    //        toastService.ShowError("Oops! Please enter email and password");
+    //    }
+    //    else
+    //    {
 
-            var responce = await _loginViewModel.LoginUser();
+    //        var responce = await _loginViewModel.LoginUser();
 
-            if (responce == "OK")
-            {
-                toastService.ShowSuccess("Welcome back to ChatApp");
+    //        if (responce == "OK")
+    //        {
 
-                _navigationManager.NavigateTo("/profile", true);
 
-            }
+    //            toastService.ShowSuccess("Welcome back to ChatApp");
 
-            toastService.ShowError("Incorrect login details please try again");
 
-        }
+    //            _navigationManager.NavigateTo("/profile", true);
 
-    }
+
+    //        }
+
+    //        toastService.ShowError("Incorrect login details please try again");
+
+    //    }
+
+    //}
 
     private async Task TwitterSignIn()
     {
@@ -117,6 +125,35 @@
     {
 
         _navigationManager.NavigateTo("/User/GoogleSignIn", true);
+
+    }
+
+    public async Task AuthenticateJWT()
+    {
+
+        if (_loginViewModel.Email == null || _loginViewModel.Password == null)
+        {
+            toastService.ShowError("Oops! Please enter email and password");
+        }
+        else
+        {
+            AuthenticationResponse authenticationResponse = await _loginViewModel.AuthenticateJWT();
+
+            if (authenticationResponse.Token != string.Empty)
+            {
+
+                await _localStorageService.SetItemAsync("JWT_Token", authenticationResponse.Token);
+
+                
+                _navigationManager.NavigateTo("/profile", true);
+            }
+            else
+            {
+                toastService.ShowError("Invalid username or passowrd");
+            }
+        }
+
+
 
     }
 

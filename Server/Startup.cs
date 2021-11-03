@@ -15,6 +15,9 @@ using System.Linq;
 using ChatApp.Server.Hubs;
 using Microsoft.Extensions.Logging;
 using ChatApp.Server.Logging;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace ChatApp.Server
 {
@@ -41,6 +44,7 @@ namespace ChatApp.Server
             services.AddRazorPages();
             services.AddHttpContextAccessor();
             services.AddSignalR();
+           
 
             services.AddResponseCompression(opt =>
             {
@@ -54,9 +58,25 @@ namespace ChatApp.Server
             services.AddAuthentication(options =>
             {
 
-                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                //options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 
-            }).AddCookie(options => { options.LoginPath = "/User/notauthorized"; }) // see httpget"NotAuthorized" in usercontroller
+            })
+                .AddJwtBearer(jwtBearerOptions =>
+                {
+                    jwtBearerOptions.RequireHttpsMetadata = true;
+                    jwtBearerOptions.SaveToken = true;
+                    jwtBearerOptions.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration["JWTSettings:SecretKey"])),
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        ClockSkew = TimeSpan.Zero
+                    };
+                })
+                //.AddCookie(options => { options.LoginPath = "/User/notauthorized"; }) // see httpget"NotAuthorized" in usercontroller
             .AddTwitter(twitterOptions =>
             {
                 twitterOptions.ConsumerKey = Configuration["Authentication:Twitter:ConsumerKey"];
@@ -81,8 +101,8 @@ namespace ChatApp.Server
 
             var serviceProvider = app.ApplicationServices.CreateScope().ServiceProvider;
             var appDbContext = serviceProvider.GetRequiredService<ApplicationDbContext>();
-            //loggerFactory.AddProvider(new ApplicationLoggerProvider(appDbContext));
-            
+            loggerFactory.AddProvider(new ApplicationLoggerProvider(appDbContext));
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

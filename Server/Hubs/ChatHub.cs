@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ChatApp.Server.Hubs
 {
-    [Authorize]
+    //[Authorize]
     public class ChatHub : Hub
     {
         public Microsoft.AspNetCore.SignalR.Client.HubConnectionState State { get; }

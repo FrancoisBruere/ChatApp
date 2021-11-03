@@ -80,6 +80,8 @@ namespace ChatApp.Client.ViewModels
             }
         }
 
+           
+
         public static implicit operator ContactViewModel(UserContactsDTO contact)
         {
             return new ContactViewModel

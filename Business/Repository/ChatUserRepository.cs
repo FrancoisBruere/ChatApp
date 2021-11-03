@@ -122,7 +122,6 @@ namespace Business.Repository
 
         }
 
-
         public async Task<IEnumerable<UserDTO>> GetAllUserProfiles()
         {
             IEnumerable<UserDTO> usersDTO =
@@ -173,19 +172,18 @@ namespace Business.Repository
                 throw new Exception(e.Message);
             }
            
-
-           
         }
 
-        public async Task AddUserActivity(int userId)
+        public async Task<bool> AddUserActivity(UserActivityDTO submitActivity) //LOOK AT LOGIC AGAIN
         {
-            if (userId != 0)
+            
+            if (submitActivity.UserId != 0)
             {
                 UserDTO user = _mapper.Map<User, UserDTO>(
-                await _db.Users.FirstOrDefaultAsync(x => x.UserId == userId));
+                await _db.Users.FirstOrDefaultAsync(x => x.UserId == submitActivity.UserId));
 
                 UserActivityDTO userActivityDTO = _mapper.Map<UserActivity, UserActivityDTO>(
-                    await _db.UserActivities.OrderBy(x=>x.LogoutDate).FirstOrDefaultAsync(x => x.UserId == userId));
+                    await _db.UserActivities.OrderBy(x => x.LogoutDate).FirstOrDefaultAsync(x => x.UserId == submitActivity.UserId));
 
                 if (userActivityDTO == null || userActivityDTO.LogoutDate != null)
                 {
@@ -197,19 +195,22 @@ namespace Business.Repository
                     await _db.UserActivities.AddAsync(userActivity);
 
                     await _db.SaveChangesAsync();
-                }
-                
-            }
 
+                    return true;
+                }
+
+            }
+            return false;
         }
 
-        public async Task UpateUserActivity(int userId)
+        public async Task UpateUserActivity(UserActivityDTO updateUserActivity)
         {
-           
+            
 
-            if (userId != 0)
+            if (updateUserActivity.UserId != 0)
             {
-                UserActivity userActivity = await _db.UserActivities.OrderBy(x=>x.LoginDate).LastOrDefaultAsync(x=>x.UserId == userId && x.LogoutDate == null);
+                
+                UserActivity userActivity = await _db.UserActivities.OrderBy(x=>x.LoginDate).LastOrDefaultAsync(x=>x.UserId == updateUserActivity.UserId && x.LogoutDate == null);
 
                 userActivity.LogoutDate = DateTime.Now;
                 userActivity.OnlineOfflineStatus = SD.LocalStorage_ChatStatusOffline;
@@ -285,7 +286,8 @@ namespace Business.Repository
                         _db.ChatHistories.RemoveRange(userHistory);
                         
 
-                        return await _db.SaveChangesAsync();
+                        var result =  await _db.SaveChangesAsync();
+                        return result;
                     }
                     else
                     {
@@ -374,5 +376,7 @@ namespace Business.Repository
 
             return userContacts;
         }
+
+       
     }
 }

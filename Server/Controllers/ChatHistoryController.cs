@@ -28,7 +28,7 @@ namespace ChatApp.Server.Controllers
             _logger = logger;
         }
 
-        [HttpPost("addChatHistory/")]
+        [HttpPost("addChatHistory")]
         public async Task<Message> AddChatHistory(Message chatHistory)
         {
             if (chatHistory != null)

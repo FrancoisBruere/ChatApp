@@ -56,5 +56,8 @@ namespace ChatApp.Server.Controllers
 
             throw new NullReferenceException();
         }
+
+    
+
     }
 }

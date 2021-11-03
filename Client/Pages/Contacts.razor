@@ -213,12 +213,14 @@ else if (!myContacts.Any())
     private bool _profilesLoaded { get; set; }
     private string _searchContactsFor { get; set; }
 
+    private string _currentuser { get; set; } ="";
+
     private string currentLocalStorageStatus { get; set; }
 
     //search contacts
     public string SearchText { get; set; } = "";
 
-    public UserDTO ContactBelong { get; set; } = new UserDTO();
+    //public UserDTO ContactBelong { get; set; } = new UserDTO();
 
     //online status from DB
 
@@ -238,7 +240,10 @@ else if (!myContacts.Any())
         {
             try
             {
-                ContactBelong = await httpClient.GetFromJsonAsync<UserDTO>("Profile/getprofile/" + user.Identity.Name);
+
+
+                // ContactBelong = await httpClient.GetFromJsonAsync<UserDTO>("Profile/getprofile/" + user.Identity.Name);
+                //ContactBelong =  await _profileViewModel.GetProfileEmail(user.Identity.Name);
                 _profilesLoaded = true;
                 allUsers = await _userSearchViewModel.GetAllUsersSearch();
 
@@ -248,6 +253,10 @@ else if (!myContacts.Any())
 
                 //get mycontacts
                 myContacts = await _contactViewModel.GetContacts(user.Identity.Name);
+
+                //addUserActivity
+                var currentuserId = await _localStorageService.GetItemAsStringAsync("User");
+                var result = await _activityViewModel.AddUserActivity(int.Parse(currentuserId));
 
 
             }
@@ -273,13 +282,15 @@ else if (!myContacts.Any())
 
     private async Task AddContact(UserSearchDTO contacts)
     {
+        _currentuser = await _localStorageService.GetItemAsStringAsync("User");
+
         UserContactsDTO contactsDTO = new UserContactsDTO();
 
         contactsDTO.UserId = contacts.UserId;
         contactsDTO.FirstName = contacts.FirstName;
         contactsDTO.LastName = contacts.LastName;
         contactsDTO.Email = contacts.Email;
-        contactsDTO.ContactBelongId = ContactBelong.UserId;
+        contactsDTO.ContactBelongId = int.Parse(_currentuser); // ContactBelong.UserId;
 
         var result = await _contactViewModel.AddContact(contactsDTO);
 
@@ -328,6 +339,7 @@ else if (!myContacts.Any())
         if (userId != 0)
         {
             //_isInChat = true;
+
             navigationManager.NavigateTo($"/chat/{userId}");
         }
         else
