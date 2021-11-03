@@ -12,3 +12,4 @@ Online - indication for user contacts
 Chat history for receiving offline message on login
 
 
+![ChatApp](https://user-images.githubusercontent.com/85226595/140187633-5e987f31-37a0-4b6b-88b9-002781879647.png)
