@@ -134,7 +134,7 @@ else
 
         <div class="panel-footer pb-3">
             <div class="input-group" id="myForm">
-                <input id="txtMessageInput" @bind="MessageText" type="text" class="form-control input-sm chat_input"
+                <input autocomplete="off" id="txtMessageInput" @bind="MessageText" type="text" class="form-control input-sm chat_input"
                        placeholder="Write your message here...">
                 <MudButton OnClick="Send" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button">Send</MudButton>
             </div>

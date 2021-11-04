@@ -212,9 +212,13 @@ namespace Business.Repository
                 
                 UserActivity userActivity = await _db.UserActivities.OrderBy(x=>x.LoginDate).LastOrDefaultAsync(x=>x.UserId == updateUserActivity.UserId && x.LogoutDate == null);
 
-                userActivity.LogoutDate = DateTime.Now;
-                userActivity.OnlineOfflineStatus = SD.LocalStorage_ChatStatusOffline;
-                await _db.SaveChangesAsync();
+                if (userActivity!=null)
+                {
+                    userActivity.LogoutDate = DateTime.Now;
+                    userActivity.OnlineOfflineStatus = SD.LocalStorage_ChatStatusOffline;
+                    await _db.SaveChangesAsync();
+                }
+                
             }
            
         }
