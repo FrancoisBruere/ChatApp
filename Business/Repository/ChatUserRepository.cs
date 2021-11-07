@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace Business.Repository
 {
-   
+
     public class ChatUserRepository : IChatUserRepository
     {
 
@@ -32,7 +32,7 @@ namespace Business.Repository
             
         }
 
-
+        #region User / Signup / Signin
         public async Task<UserDTO> SignUp(UserDTO userDTO)
         {
 
@@ -98,29 +98,28 @@ namespace Business.Repository
 
         }
 
-        public async Task<Message> AddChatHistory(Message historyDTO)
+        public async Task<UserDTO> GetUserForLogin(string email, string password)
         {
-            
 
-            if (historyDTO != null)
+            try
             {
-                ChatHistory currentRecord = new ChatHistory();
-                currentRecord.ToUserId = int.Parse(historyDTO.ToUserId);
-                currentRecord.FromUserId = int.Parse(historyDTO.FromUserId);
-                currentRecord.Message = historyDTO.MessageText;
-                currentRecord.CreatedDate = historyDTO.CreatedDate;
-                currentRecord.ConversationId = historyDTO.FromUserId + "," + historyDTO.ToUserId;
-                
-                await _db.ChatHistories.AddAsync(currentRecord);
-                
-                await _db.SaveChangesAsync();
+                UserDTO user = _mapper.Map<User, UserDTO>(
+                await _db.Users.FirstOrDefaultAsync(x => x.Email == email && x.Password == password));
 
-                return null;
+                return user;
+            }
+            catch (Exception e)
+            {
+
+                throw new Exception(e.Message);
             }
 
-            throw new DbUpdateException();
+
 
         }
+        #endregion
+
+        #region Profile
 
         public async Task<IEnumerable<UserDTO>> GetAllUserProfiles()
         {
@@ -129,7 +128,7 @@ namespace Business.Repository
             
             return usersDTO;
         }
-
+        
         public async Task<UserDTO> GetUserProfile(int userId)
         {
             UserDTO user = _mapper.Map<User, UserDTO>(
@@ -155,25 +154,82 @@ namespace Business.Repository
 
             
         }
-
-        public async Task<IEnumerable<UserActivityDTO>> GetUserStatus()
+        public async Task<UserDTO> UpdateUserProfile(int userId, UserDTO userDTO)
         {
-            try
+
+            if (userId == userDTO.UserId)
             {
-                IEnumerable<UserActivityDTO> userActivityDTOs =
-              _mapper.Map<IEnumerable<UserActivity>, IEnumerable<UserActivityDTO>>(_db.UserActivities.Where(x => x.LogoutDate == null));
+                User userProfileDetails = await _db.Users.FindAsync(userId);
+
+                userProfileDetails.FirstName = userDTO.FirstName;
+                userProfileDetails.LastName = userDTO.LastName;
+                userProfileDetails.About = userDTO.About;
+                userProfileDetails.Email = userDTO.Email;
+                userProfileDetails.UpdateDate = DateTime.Now;
+                userProfileDetails.ProfilePicUrl = userDTO.ProfilePicUrl;
+                userProfileDetails.UserId = userDTO.UserId;
+
+                await _db.SaveChangesAsync();
+
+                return null;
 
 
-                return userActivityDTOs;
             }
-            catch (Exception e)
+            else
             {
 
-                throw new Exception(e.Message);
+                return null;
+
             }
-           
+
         }
 
+        public async Task<int> DeleteUserProfile(int userId)
+        {
+            if (userId != 0)
+            {
+                var userProfileDetails = await _db.Users.FindAsync(userId);
+                var userContacts = _db.UserContacts.Where(x => x.ContactBelongId == userId);
+                var userHistory = _db.ChatHistories.Where(x => x.FromUserId == userId);
+
+
+                try
+                {
+                    if (userProfileDetails != null)
+                    {
+                        _db.Users.Remove(userProfileDetails);
+                        _db.UserContacts.RemoveRange(userContacts);
+                        _db.ChatHistories.RemoveRange(userHistory);
+
+
+                        var result = await _db.SaveChangesAsync();
+                        return result;
+                    }
+                    else
+                    {
+                        throw new DbUpdateException("Unable to remove requested profile");
+                    }
+                }
+                catch (Exception e)
+                {
+                    string innermessage = (e.InnerException.Message);
+                    throw new Exception(e.Message);
+
+                }
+
+
+
+            }
+            else
+            {
+
+                return 0;
+
+            }
+        }
+        #endregion
+
+        #region Activity
         public async Task<bool> AddUserActivity(UserActivityDTO submitActivity) //LOOK AT LOGIC AGAIN
         {
             
@@ -223,15 +279,15 @@ namespace Business.Repository
            
         }
 
-        public async Task<UserDTO> GetUserForLogin(string email, string password)
+        public async Task<IEnumerable<UserActivityDTO>> GetUserStatus()
         {
-
             try
             {
-                UserDTO user = _mapper.Map<User, UserDTO> (
-                await _db.Users.FirstOrDefaultAsync(x => x.Email == email && x.Password == password));
+                IEnumerable<UserActivityDTO> userActivityDTOs =
+              _mapper.Map<IEnumerable<UserActivity>, IEnumerable<UserActivityDTO>>(_db.UserActivities.Where(x => x.LogoutDate == null));
 
-                return user;
+
+                return userActivityDTOs;
             }
             catch (Exception e)
             {
@@ -239,83 +295,35 @@ namespace Business.Repository
                 throw new Exception(e.Message);
             }
 
-          
-
         }
-        public async Task<UserDTO> UpdateUserProfile(int userId, UserDTO userDTO)
+
+        #endregion
+
+        #region ChatHistory
+
+        public async Task<Message> AddChatHistory(Message historyDTO)
         {
 
-            if (userId == userDTO.UserId)
-            {
-                User userProfileDetails = await _db.Users.FindAsync(userId);
 
-                userProfileDetails.FirstName = userDTO.FirstName;
-                userProfileDetails.LastName = userDTO.LastName;
-                userProfileDetails.About = userDTO.About;
-                userProfileDetails.Email = userDTO.Email;
-                userProfileDetails.UpdateDate = DateTime.Now;
-                userProfileDetails.ProfilePicUrl = userDTO.ProfilePicUrl;
-                userProfileDetails.UserId = userDTO.UserId;
-               
+            if (historyDTO != null)
+            {
+                ChatHistory currentRecord = new ChatHistory();
+                currentRecord.ToUserId = int.Parse(historyDTO.ToUserId);
+                currentRecord.FromUserId = int.Parse(historyDTO.FromUserId);
+                currentRecord.Message = historyDTO.MessageText;
+                currentRecord.CreatedDate = historyDTO.CreatedDate;
+                currentRecord.ConversationId = historyDTO.FromUserId + "," + historyDTO.ToUserId;
+
+                await _db.ChatHistories.AddAsync(currentRecord);
+
                 await _db.SaveChangesAsync();
 
                 return null;
-                
-
             }
-            else
-            {
 
-                return null;
+            throw new DbUpdateException();
 
-            }
-            
         }
-
-        public async Task<int> DeleteUserProfile(int userId)
-        {
-            if (userId !=0)
-            {
-                var userProfileDetails = await _db.Users.FindAsync(userId);
-                var userContacts =  _db.UserContacts.Where(x=>x.ContactBelongId == userId);
-                var userHistory = _db.ChatHistories.Where(x => x.FromUserId == userId);
-                
-
-                try
-                {
-                    if (userProfileDetails != null)
-                    {
-                        _db.Users.Remove(userProfileDetails);
-                        _db.UserContacts.RemoveRange(userContacts);
-                        _db.ChatHistories.RemoveRange(userHistory);
-                        
-
-                        var result =  await _db.SaveChangesAsync();
-                        return result;
-                    }
-                    else
-                    {
-                        throw new DbUpdateException("Unable to remove requested profile");
-                    }
-                }
-                catch (Exception e)
-                {
-                    string innermessage = (e.InnerException.Message);
-                    throw new Exception(e.Message);
-
-                }
-
-                
-
-            }
-            else
-            {
-
-                return 0;
-
-            }
-        }
-
         public async Task<IEnumerable<ChatHistoryDTO>> GetUserChatHistoryById(int toId, int fromId)
         {
             var conversationFromId = fromId.ToString() + "," + toId.ToString(); //here
@@ -333,6 +341,10 @@ namespace Business.Repository
 
         }
 
+
+        #endregion
+
+        #region Contacts
         public async Task<UserContactsDTO> AddContact(UserContactsDTO contacts)
         {
 
@@ -361,11 +373,14 @@ namespace Business.Repository
 
                 return null;
 
-               
+
             }
 
             throw new DbUpdateException();
         }
+
+
+
 
         public async Task<IEnumerable<UserContactsDTO>> GetContacts(string email)
         {
@@ -381,6 +396,6 @@ namespace Business.Repository
             return userContacts;
         }
 
-       
+        #endregion
     }
 }
