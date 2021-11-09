@@ -1,15 +1,15 @@
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
 using Blazored.LocalStorage;
 using Blazored.Toast;
 using ChatApp.Client.Handlers;
 using ChatApp.Client.ViewModels;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
-using System;
-using System.Net.Http;
-using System.Threading.Tasks;
+
 
 namespace ChatApp.Client
 {
@@ -20,15 +20,23 @@ namespace ChatApp.Client
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<App>("#app");
 
-            builder.Services.AddBlazoredToast();
-            builder.Services.AddBlazoredLocalStorage();
             builder.Services.AddOptions();
             builder.Services.AddAuthorizationCore();
+
+            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+
             
 
-            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)});
-
+            builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
+            builder.Services.AddScoped<CustomAuthorizationHandler>();  //transient
             
+
+            builder.Services.AddBlazoredToast();
+            builder.Services.AddBlazoredLocalStorage();
+            builder.Services.AddMudServices();
+            
+            AddHttpClients(builder);
+
             //builder.Services.AddLogging(logging =>
             //{
             //    var httpClient = builder.Services.BuildServiceProvider().GetRequiredService<HttpClient>();
@@ -36,33 +44,23 @@ namespace ChatApp.Client
             //    logging.AddProvider(new ApplicationLoggerProvider(httpClient));
             //});
 
-            builder.Services.AddMudServices();
-            builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
-            builder.Services.AddScoped<CustomAuthorizationHandler>();
-            
             //builder.Services.AddScoped<IProfileViewModel, ProfileViewModel>();
             //builder.Services.AddScoped<IUserSearchViewModel, UserSearchViewModel>();
-            builder.Services.AddScoped<ILoginViewModel, LoginViewModel>();
-            
-            builder.Services.AddScoped<ISignUpViewModel, SignUpViewModel>();
+            //builder.Services.AddScoped<ILoginViewModel, LoginViewModel>();
+
+            //builder.Services.AddScoped<ISignUpViewModel, SignUpViewModel>();
+
             //builder.Services.AddScoped<IChatHistoryViewModel, ChatHistoryViewModel>();
             //builder.Services.AddScoped<IActivityViewModel, ActivityViewModel>();
             //builder.Services.AddScoped<IContactViewModel, ContactViewModel>();
 
-            AddHttpClients(builder);
-
-            
             await builder.Build().RunAsync();
-
-           
-
-
-
 
         }
 
         public static void AddHttpClients(WebAssemblyHostBuilder builder)
         {
+          
             builder.Services.AddHttpClient<IProfileViewModel, ProfileViewModel>
                 ("ProfileViewModelClient", client => client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress))
                 .AddHttpMessageHandler<CustomAuthorizationHandler>();
@@ -82,6 +80,15 @@ namespace ChatApp.Client
             builder.Services.AddHttpClient<IChatHistoryViewModel, ChatHistoryViewModel>
              ("ChatHistoryViewModelClient", client => client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress))
              .AddHttpMessageHandler<CustomAuthorizationHandler>();
+
+            builder.Services.AddHttpClient<ILoginViewModel, LoginViewModel>
+                ("LoginViewModelClient", client => client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress));
+
+            builder.Services.AddHttpClient<ISignUpViewModel, SignUpViewModel>
+                ("SignUpViewModelClient", client => client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress));
+
+            builder.Services.AddHttpClient<IFacebookAuthViewModel, FacebookAuthViewModel>
+            ("FacebookAuthViewModelClient", client => client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress));
 
         }
     }

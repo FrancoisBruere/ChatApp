@@ -1,0 +1,45 @@
+﻿@page "/FacebookAuth"
+
+@using Microsoft.AspNetCore.WebUtilities
+@using ChatApp.Client.ViewModels
+
+@inject ILocalStorageService _localStorageService
+@inject NavigationManager _navigationManager
+@inject IFacebookAuthViewModel _facebookViewModel
+
+
+<div style="position:fixed;top:50%;left:50%;margin-top:-50px; margin-left:-100px">
+    <img src="/images/ajax-loader.gif" alt="loading" />
+
+</div>
+
+@code {
+
+    public string AccessToken { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        try
+        {
+
+
+            if (QueryHelpers.ParseQuery(_navigationManager.Uri.Split("#")[1]).TryGetValue("access_token", out var _accessToken))
+            {
+                AccessToken = _accessToken;
+
+                string token = await _facebookViewModel.GetFacebookJWTAsync(_accessToken);
+                await _localStorageService.SetItemAsync<string>("JWT_Token", token);
+
+                _navigationManager.NavigateTo("/profile", true);
+            }
+        }
+        catch (Exception e)
+        {
+
+            throw new Exception(e.Message);
+        }
+
+
+    }
+}

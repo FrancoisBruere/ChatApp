@@ -44,7 +44,7 @@
 
             </div>
             <div class="py-2">
-                <a class="btn btn-block btn-social btn-facebook" @onclick="FacebookSignIn">
+                <a class="btn btn-block btn-social btn-facebook" @onclick="FacebookJWT">
                     <span class="fa fa-facebook"></span><b> Sign in with Facebook</b>
                 </a>
 
@@ -113,10 +113,20 @@
     }
 
 
-    private void FacebookSignIn()
+    //private async Task FacebookSignIn() //without JWT auth
+    //{
+
+    //    _navigationManager.NavigateTo("/User/FacebookSignIn", true);
+    //}
+
+    public async Task FacebookJWT()
     {
 
-        _navigationManager.NavigateTo("/User/FacebookSignIn", true);
+        var appId = await _loginViewModel.GetFacebookIdAsync();
+        
+        var tokenRequest = $"https://www.facebook.com/v11.0/dialog/oauth?&response_type=token&client_id={appId}&redirect_uri=https://localhost:44383/FacebookAuth";
+
+        _navigationManager.NavigateTo(tokenRequest, true);
 
     }
 
@@ -144,7 +154,7 @@
 
                 await _localStorageService.SetItemAsync("JWT_Token", authenticationResponse.Token);
 
-                
+
                 _navigationManager.NavigateTo("/profile", true);
             }
             else

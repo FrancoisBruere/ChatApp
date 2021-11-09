@@ -14,6 +14,8 @@ namespace ChatApp.Client.ViewModels
 
             public Task<string> LoginUser();
             public Task<AuthenticationResponse> AuthenticateJWT();
+
+            public Task<string> GetFacebookIdAsync();
         }
 
     

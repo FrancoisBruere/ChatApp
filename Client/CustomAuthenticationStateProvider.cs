@@ -35,8 +35,6 @@ namespace ChatApp.Client
 
             if (currentUser != null && currentUser.Email != null)
             {
-
-
                 // create a claim
                 var claimEmailAddress = new Claim(ClaimTypes.Name, currentUser.Email);
                 var claimNameIdentifier = new Claim(ClaimTypes.NameIdentifier, Convert.ToString(currentUser.UserId));
@@ -51,9 +49,6 @@ namespace ChatApp.Client
             {
                 return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
             }
-
-           
-
         }
 
         public async Task<User> GetUserByJWTAsync()

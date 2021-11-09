@@ -59,6 +59,12 @@ namespace ChatApp.Client.ViewModels
 
         }
 
+        
+        public async Task<string> GetFacebookIdAsync()
+        {
+            return await _httpClient.GetStringAsync("User/getfacebookappId");
+        }
+
 
 
         public static implicit operator LoginViewModel(UserDTO user)

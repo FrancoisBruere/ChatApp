@@ -1,4 +1,5 @@
 ﻿using Business.Repository.IRepository;
+using ChatApp.Client.Pages;
 using ChatApp.Shared;
 using DataAccess;
 using Microsoft.AspNetCore.Authentication;
@@ -16,6 +17,8 @@ using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,23 +27,28 @@ namespace ChatApp.Server.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+
     public class UserController : ControllerBase
     {
 
-       
+
         private readonly IChatUserRepository _chatUserRepository;
         private readonly ILogger<UserController> _logger;
         private readonly ApplicationDbContext _db;
         private readonly IConfiguration _configuration;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public UserController(IChatUserRepository chatUserRepository, ILogger<UserController> logger, IConfiguration configuration, ApplicationDbContext db)
+
+        public UserController(IChatUserRepository chatUserRepository, ILogger<UserController> logger, IConfiguration configuration, ApplicationDbContext db, IHttpClientFactory httpClientFactory)
         {
-            
+
             _chatUserRepository = chatUserRepository;
             _logger = logger;
             _configuration = configuration;
             _db = db;
+            this._httpClientFactory = httpClientFactory;
         }
+
 
         [HttpPost("signup")]
         public async Task<ActionResult<UserDTO>> SignUp([FromBody] UserDTO user)
@@ -152,31 +160,10 @@ namespace ChatApp.Server.Controllers
         [HttpGet("logoutuser")]
         public async Task<string> LogOutUser()
         {
-           
+
             await HttpContext.SignOutAsync();
 
             return "Success";
-        }
-
-
-        [HttpGet("TwitterSignIn")]
-
-        public async Task TwitterSignIn()
-        {
-
-           await HttpContext.ChallengeAsync(TwitterDefaults.AuthenticationScheme,
-               GetAuthenticationProperties());
-            
-        }
-
-        [HttpGet("FacebookSignIn")]
-
-        public async Task FacebookSignIn()
-        {
-
-            await HttpContext.ChallengeAsync(FacebookDefaults.AuthenticationScheme,
-                 GetAuthenticationProperties());
-
         }
 
         [HttpGet("GoogleSignIn")]
@@ -188,6 +175,92 @@ namespace ChatApp.Server.Controllers
 
         }
 
+        [HttpGet("TwitterSignIn")]
+
+        public async Task TwitterSignIn()
+        {
+
+            await HttpContext.ChallengeAsync(TwitterDefaults.AuthenticationScheme,
+                GetAuthenticationProperties());
+
+        }
+
+        
+        [HttpGet("FacebookSignIn")]
+        public async Task FacebookSignIn()
+        {
+
+            await HttpContext.ChallengeAsync(FacebookDefaults.AuthenticationScheme,
+                 GetAuthenticationProperties());
+
+        }
+
+       
+        [HttpGet("getfacebookappId")]
+        public ActionResult<string> GetFacebookAppId()
+        {
+
+            return _configuration["Authentication:Facebook:AppId"];
+
+        }
+
+       
+        [HttpPost("getfacebookjwt")]
+        public async Task<ActionResult<AuthenticationResponse>> GetFacebookJWT([FromBody] FacebookAuth facebookAuthRequest)
+        {
+            // 1.create a token and an http client
+            string token = string.Empty;
+            var client = _httpClientFactory.CreateClient();
+
+            // 2.get AppId and AppSecrete
+            string appId = _configuration["Authentication:Facebook:AppId"];
+            string appSecrete = _configuration["Authentication:Facebook:AppSecret"];
+            Console.WriteLine("\nApp Id : " + appId);
+            Console.WriteLine("Secrete Id : " + appSecrete + "\n");
+
+            // 3. generate an app access token
+            var appAccessRequest = $"https://graph.facebook.com/oauth/access_token?client_id={appId}&client_secret={appSecrete}&grant_type=client_credentials";
+            var appAccessTokenResponse = await client.GetFromJsonAsync<FacebookAppAccessToken>(appAccessRequest);
+          
+
+            // 4. validate the user access token
+            var userAccessValidationRequest = $"https://graph.facebook.com/debug_token?input_token={facebookAuthRequest.AccessToken}&access_token={appAccessTokenResponse.Access_Token}";
+            var userAccessTokenValidationResponse = await client.GetFromJsonAsync<FacebookUserAccessTokenValidation>(userAccessValidationRequest);
+           
+
+            if (!userAccessTokenValidationResponse.Data.Is_Valid)
+                return BadRequest();
+
+            // 5. we've got a valid token so we can request user data from facebook
+            var userDataRequest = $"https://graph.facebook.com/v11.0/me?fields=id,email,first_name,last_name,name,gender,locale,birthday,picture&access_token={facebookAuthRequest.AccessToken}";
+            var facebookUserData = await client.GetFromJsonAsync<FacebookUserData>(userDataRequest);
+            
+
+            //6. try to find the user in the database or create a new account
+            var loggedInUser = await _db.Users.Where(user => user.Email == facebookUserData.Email).FirstOrDefaultAsync();
+
+            //7. generate the token
+            if (loggedInUser == null)
+            {
+                loggedInUser = new User();
+                loggedInUser.UserId = _db.Users.Max(user => user.UserId) + 1;
+                loggedInUser.Email = User.FindFirstValue(ClaimTypes.Email);
+                loggedInUser.Password = Utility.Encrypt(loggedInUser.Email);
+                loggedInUser.Source = "EXTL";
+
+                _db.Users.Add(loggedInUser);
+                await _db.SaveChangesAsync();
+            }
+
+            token = GenerateJwtToken(loggedInUser);
+            Console.WriteLine("JWT : " + token + "\n");
+
+            return await Task.FromResult(new AuthenticationResponse() { Token = token });
+        }
+
+
+       
+
         // get authentication properties as per loginuser for social login accouts -  cookie settings "loginuser"
 
         public AuthenticationProperties GetAuthenticationProperties()
@@ -197,12 +270,13 @@ namespace ChatApp.Server.Controllers
             return new AuthenticationProperties()
             {
                                
-                IsPersistent = true, // cookie remains until user log out
+                // cookie remains until user log out
                 ExpiresUtc = DateTime.Now.AddHours(1),
                 RedirectUri = "/profile",
             };
 
         }
+
 
         [HttpGet("notauthorized")]
 
@@ -244,6 +318,7 @@ namespace ChatApp.Server.Controllers
             return tokenHandler.WriteToken(token);
         }
 
+        
         [HttpPost("authenticatejwt")]
         public async Task<ActionResult<AuthenticationResponse>> AuthenticateJWT(AuthenticationRequest authenticationRequest)
         {
@@ -264,7 +339,7 @@ namespace ChatApp.Server.Controllers
             return await Task.FromResult(new AuthenticationResponse() { Token = token });
         }
 
-
+        
         [HttpPost("getuserbyjwt")]
         public async Task<ActionResult<User>> GetUserByJWT([FromBody] string jwtToken)
         {
