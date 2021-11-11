@@ -1,6 +1,8 @@
-﻿using Business.Repository.IRepository;
+﻿using AutoMapper;
+using Business.Repository.IRepository;
 using ChatApp.Client.Pages;
 using ChatApp.Shared;
+using Common;
 using DataAccess;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Facebook;
@@ -37,16 +39,18 @@ namespace ChatApp.Server.Controllers
         private readonly ApplicationDbContext _db;
         private readonly IConfiguration _configuration;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IMapper _mapper;
 
 
-        public UserController(IChatUserRepository chatUserRepository, ILogger<UserController> logger, IConfiguration configuration, ApplicationDbContext db, IHttpClientFactory httpClientFactory)
+        public UserController(IChatUserRepository chatUserRepository, ILogger<UserController> logger, IConfiguration configuration, ApplicationDbContext db, IHttpClientFactory httpClientFactory, IMapper mapper)
         {
 
             _chatUserRepository = chatUserRepository;
             _logger = logger;
             _configuration = configuration;
             _db = db;
-            this._httpClientFactory = httpClientFactory;
+            _mapper = mapper;
+            _httpClientFactory = httpClientFactory;
         }
 
 
@@ -239,22 +243,24 @@ namespace ChatApp.Server.Controllers
             //6. try to find the user in the database or create a new account
             var loggedInUser = await _db.Users.Where(user => user.Email == facebookUserData.Email).FirstOrDefaultAsync();
 
+            UserDTO user = new UserDTO();
+
             //7. generate the token
             if (loggedInUser == null)
             {
-                loggedInUser = new User();
-                loggedInUser.UserId = _db.Users.Max(user => user.UserId) + 1;
-                loggedInUser.Email = User.FindFirstValue(ClaimTypes.Email);
-                loggedInUser.Password = Utility.Encrypt(loggedInUser.Email);
-                loggedInUser.Source = "EXTL";
 
-                _db.Users.Add(loggedInUser);
-                await _db.SaveChangesAsync();
+                user.Email = facebookUserData.Email;
+                user.Password = Utility.Encrypt(facebookUserData.Email);
+                user.Source = SD.External_Facebook;
+
+                var addedUser = await _chatUserRepository.SignUp(user);
+
+                loggedInUser = _mapper.Map<UserDTO, User>(addedUser);
+            
             }
 
             token = GenerateJwtToken(loggedInUser);
-            Console.WriteLine("JWT : " + token + "\n");
-
+            
             return await Task.FromResult(new AuthenticationResponse() { Token = token });
         }
 
